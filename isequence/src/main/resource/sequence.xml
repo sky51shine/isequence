@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd" >
+
+<!-- author: suxiong.sx -->
+<sqlMap namespace="Sequence" >
+
+    <typeAlias alias="sequenceDO" type="com.uulookingfor.isequence.dao.domain.SequenceDO" />
+    <typeAlias alias="sequenceUpdateDO" type="com.uulookingfor.isequence.dao.domain.SequenceUpdateDO" />
+    <typeAlias alias="sequenceQuery" type="com.uulookingfor.isequence.dao.domain.SequenceQuery" />
+    
+
+    <resultMap id="sequenceDOResultMap" class="sequenceDO" >
+        <result property="name" column="name" />
+        <result property="value" column="value" />
+        <result property="gmtModified" column="gmt_modified" />
+        <result property="id" column="id" />
+    </resultMap>
+
+    <sql id="sequence_columns" >
+        a1.name, a1.value, a1.gmt_modified, a1.id
+    </sql>
+
+    <sql id="sequence_queryParams" >
+        <dynamic prepend="WHERE" >
+            <isNotNull property="name" prepend="AND" >
+            <![CDATA[  
+                name LIKE CONCAT("%", #name# ,"%")  
+            ]]>
+            </isNotNull>
+            <isNotNull property="value" prepend="AND" >
+            <![CDATA[  
+                value = #value# 
+            ]]>
+            </isNotNull>
+            <isNotNull property="gmtModifiedStart" prepend="AND" >
+            <![CDATA[  
+                DATE_FORMAT(gmt_modified,"%Y-%m-%d %H:%i:%s") >= DATE_FORMAT(#gmtModifiedStart#,"%Y-%m-%d %H:%i:%s")   
+            ]]>
+            </isNotNull>
+            <isNotNull property="gmtModifiedEnd" prepend="AND" >
+            <![CDATA[  
+                DATE_FORMAT(gmt_modified,"%Y-%m-%d %H:%i:%s") <= DATE_FORMAT(#gmtModifiedEnd#,"%Y-%m-%d %H:%i:%s")   
+            ]]>
+            </isNotNull>
+            <isNotNull property="id" prepend="AND" >
+            <![CDATA[  
+                id = #id# 
+            ]]>
+            </isNotNull>
+        </dynamic>
+    </sql>
+
+    <insert id="insert" parameterClass="sequenceDO" >
+        insert into sequence(
+        name,
+        value,
+        gmt_modified
+        ) values (
+        #name#,
+        #value#,
+        now()
+        )
+        <selectKey keyProperty="id" resultClass="java.lang.Long">
+            SELECT LAST_INSERT_ID() AS value
+        </selectKey>
+    </insert>
+
+    <update id="update" parameterClass="sequenceDO" >
+        UPDATE sequence set  gmt_modified = now() 
+            <isNotNull property="name" prepend="," >
+            <![CDATA[  
+                name = #name# 
+            ]]>
+            </isNotNull>
+            <isNotNull property="value" prepend="," >
+            <![CDATA[  
+                value = #value# 
+            ]]>
+            </isNotNull>
+        WHERE id = #id#
+    </update>
+
+	<update id="updateSequence" parameterClass="sequenceUpdateDO" >
+        UPDATE sequence set  gmt_modified = now() , value = #newValue#
+        WHERE id = #id# and name = #name# and value = #oldValue#
+    </update>
+	
+    <select id="query" resultMap="sequenceDOResultMap" parameterClass="sequenceQuery">
+        SELECT
+        <include refid="sequence_columns" />
+        FROM sequence a1
+        <include refid="sequence_queryParams" />
+        <isEqual property="paging" compareValue="true">
+            limit #start#, #limit#
+        </isEqual>
+    </select>
+
+    <select id="count" parameterClass="sequenceQuery" resultClass="int">
+        SELECT COUNT(*) FROM sequence
+        <include refid="sequence_queryParams" />
+    </select>
+
+</sqlMap>
